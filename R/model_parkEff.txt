@@ -1,0 +1,36 @@
+
+      
+model{
+for(j in 1:J){ # sites 
+# Biological model
+N[j] ~ dpois(lambda[j])
+log(lambda[j]) <- park[park.ind[j]] + a1*ele[j] + a2*population[j] + a3*distance[j] 
+
+#Detection model
+y[j] ~ dbin(p[j], n[j])  # y[j] is the number of 1's for site j, out of n[j] days
+p[j] <- 1-(1-r[j])^N[j]
+logit(r[j]) <- b0 + b1*cam_angle[j]
+}
+
+# Priors:
+sd.p ~ dunif(0,20) 
+tau.p <- 1/(sd.p*sd.p)
+
+for(i in 1:6) {  # loop over parks
+mu.park[i] <- a0 + a4*parksize[i] + a5*outreach[i] + a6*punishment[i] # random parks effects
+park[i] ~ dnorm(mu.park[i], tau.p)
+}
+
+# Priors:
+a0 ~ dunif(-50,50) # norm distributed prior causing slow mixing problem, using uniform priors instead
+a1 ~ dunif(-50,50)
+a2 ~ dunif(-50,50)
+a3 ~ dunif(-50,50)
+a4 ~ dunif(-50,50)
+a5 ~ dunif(-50,50)
+a6 ~ dunif(-50,50)  
+b0 ~ dunif(-10,10)
+b1 ~ dunif(-50,50)
+
+}
+
