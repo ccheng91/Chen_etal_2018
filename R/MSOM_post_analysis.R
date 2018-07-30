@@ -1,23 +1,21 @@
 # post analysis
 rm(list=ls(all=TRUE))
 load("Workplace/MSOM_villager_reported.RData")
-
-# ocu model equation
-# "a1[i]*elev[j] +a3[i]*pop[j]  + a11[i]*distance[j] + a4[i]*pasize[j] + 
-# a5[i]*punish[j] +a6[i]*reach[j] + a.park[i,park.ind[j]]"
-
-########################################################################################################################
-# check density plots fast way
-########################################################################################################################
+library(ggplot2)
+library(jagsUI)
+fit$Rhat
+#############################################################
+############# check traceplot & density plots ###############
+#############################################################
 par <- c( 'mu.a1','mu.a3','mu.a11','mu.a4', 'mu.a5', 'mu.a6', 
           'mu.b1', 'mu.b2')
 par.name <-c("Elevation","Human Population","Distance","Park Size","Village Punishment","Village Outreach","Camera hours","Camera Angle")
 
 jagsUI::whiskerplot(fit,parameters = par)
 
-########################################################################################################################
-### make one param table ###
-########################################################################################################################
+######################################
+### making params table #############
+#######################################
 tab <- matrix(999, ncol=2, nrow=8)
 tab <- as.data.frame(tab)
 
@@ -60,57 +58,26 @@ rownames(tab) <-c("Elevation","Human Population","Distance","Park Size","Village
 
 write.csv(tab, file = "result/MSOM_beta_coef_village.csv" )
 
-#####################################################################################################################################################
-#####################################################################################################################################################
-###Check model fit
-#####################################################################################################################################################
+
+############################
+### Check model fit ########
+############################
+
 p.fit = fit$sims.list$p.fit
 p.fitnew =fit$sims.list$p.fitnew
 model.fit= length(which(p.fit-p.fitnew>0))/length(p.fit)
 #If model.fit between 0.05 and 0.95, then model fit is good
 model.fit
-#####################################################################################################################################################
-#####################################################################################################################################################
+#################################################################
 
 # Estimated site richness
 Nsite <- fit$sims.list$Nsite
 mean(Nsite)
 sd(Nsite)
 
-#####
-## caterplot using lattice
-library(reshape)
-library(denstrip)
-library(lattice)
-
-preds<-as.data.frame(cbind(mu.a1,mu.a3,mu.a11,mu.a4,mu.a5,mu.a6,mu.b1,mu.b2))
-# sort effects by median size
-idx<-sort(abs(apply(preds,2,median)),index.return=T,decreasing=F)$ix
-idx2<-c(1,2,3,4,5,6,7,8)
-
-names(preds) <- c("Elevation","Human Population","Distance","Park Size","Punishment","Outreach","Camera hours","Camera Angle")
-
-# apply and sort labels
-labs=c("Elevation","Human Population","Distance","Park Size","Punishment","Outreach","Camera hours","Camera Angle")[idx2]
-
-mp=melt(preds[,idx2])
-rpp=bwplot(variable~value,data=mp,xlab=list(label="Standardized beta coefficients",cex=1)
-           ,panel = function(x, y) { 
-             #grid.segments(1,0,0,0)
-             xlist <- split(x, factor(y))
-             for (i in seq(along=xlist))
-               panel.denstrip(x=xlist[[i]], at=i)
-           },par.settings = list(axis.line = list(col=NA)),scales=list(col=1,cex=1,x=list(col=1),y=list(draw=T,labels=labs)))
-print(rpp)
-trellis.focus("panel", 1,1)
-panel.abline(v=0,col=1,lty=2)
-trellis.unfocus()
-
-##################################################################################################################################################
-##################################################################################################################################################
-## caterplot using ggpolt2
-library(ggplot2)
-###################################################################################################################################################
+##############################
+######## caterplot  ######## 
+#############################
 preds<-as.data.frame(cbind(mu.a1,mu.a3,mu.a11,mu.a4,mu.a5,mu.a6,mu.b1,mu.b2))
 cater <- matrix(rep(0), ncol=length(preds),nrow =6)
 for ( i in 1:ncol(preds)) {
@@ -121,7 +88,7 @@ for ( i in 1:ncol(preds)) {
   cater[5,i] <-quantile(preds[,i],prob=0.05)
   cater[6,i] <-quantile(preds[,i],prob=0.95)
 }
-labs <- c("Elevation","Human Population","Distance","Park Size","Punishment","Outreach","Camera hours","Camera angle")
+labs <- c("Elevation","Human Population","Distance","Park Size","Village punishment","village outreach","Camera hours","Camera angle")
 cater <- as.data.frame(cater)
 cater[7,] <- labs
 rownames(cater) <- c("mean","sd","lower","higher","X90lower","X90higher","labels")
@@ -135,7 +102,7 @@ cater[,5] <- as.numeric(as.character(cater[,5]))
 cater[,6] <- as.numeric(as.character(cater[,6]))
 cater[,1:6] <- round(cater[,1:6], digits=2)
 
-cater$labels <- factor(cater$labels, levels = c("Elevation","Human Population","Distance","Park Size","Punishment","Outreach","Camera hours","Camera angle"))
+cater$labels <- factor(cater$labels, levels =  c("Elevation","Human Population","Distance","Park Size","Village punishment","village outreach","Camera hours","Camera angle"))
 limit <- aes(ymax = higher, ymin=lower)
 P <- ggplot(cater, aes(y=mean, x=labels))
 P + theme_bw()+ 
@@ -146,9 +113,95 @@ P + theme_bw()+
 #+scale_y_continuous(breaks = seq(-3, 3, 1))
 
 
-#####################################################################################################################################################
-##### spieces specific beta coef ##
-#####################################################################################################################################################
+#############################################################
+### plot estimated species richness vs single covariate ###
+############################################################
+
+u <- fit$sims.list$u
+elev=sitecov.std$elevation; pop=sitecov.std$population; pasize=sitecov.std$pasize; 
+punish=sitecov.std$punishment; reach=sitecov.std$outreach;
+distance=sitecov.std$distance
+
+######################################################
+######## villager-reproted outreach ################
+######################################################
+
+#### outreach effect using 1.5 as minial outreach 7 as max
+
+r.dummy <-seq(1.5,7,length.out=100) 
+mreach <- mean(sitecov$reach)
+sdreach <- sd(sitecov$reach)
+hreach1 <- (r.dummy-mreach)/sdreach # standardized covariate gradient
+head(sitecov)
+psi=matrix(0,nrow=length(spp),ncol=dim(u)[1])
+mu.park=matrix(0,nrow=dim(u)[1],ncol=length(spp))
+richness2 = matrix(0, nrow=length(r.dummy), ncol=dim(u)[1])
+u1 <- u[,,1] # use u from park 1, park 1 has meandiam mean vaule of u
+for (j in 1:length(r.dummy)) {
+  for(i in 1: length(spp)) {
+    for (k in 1:dim(u)[1]) {
+      
+      mu.park[k,i] <- u1[k,i] + a4[k,i]*mean(pasize) + a5[k,i]*mean(punish) + a6[k,i]*hreach1[j] 
+      psi[i,k] <- plogis(mu.park[k,i] + a1[k,i]*mean(elev) + a3[k,i]*mean(pop) + a11[k,i]*mean(distance))
+      
+    }}
+  richness2[j,] <- apply(psi,2,sum)  
+}
+
+richness1<-cbind(apply(richness2,1,mean),apply(richness2,1,quantile,0.975),apply(richness2,1,quantile,0.025))
+Reachrichness<-cbind(r.dummy, richness1)
+Reachrichness <- as.data.frame(Reachrichness)
+names(Reachrichness) <- c("reach", "richness", "up", "low")
+
+## plot using ggplot2 
+ggplot(Reachrichness, aes(x=reach)) +geom_line(aes(y = richness), colour="black") + theme_bw() +
+  geom_line(aes(y = up),colour="gray", linetype=2) + geom_line(aes(y = low),colour="gray",linetype=2) +
+  theme(axis.text.x = element_text(size=18))+ theme(text = element_text(size=20))+
+  theme(axis.text=element_text(size=25),axis.title=element_text(size=25)) +
+  xlab("Villager-reproted outreach (times/year/village)") + ylab("Estimated species richness")+
+  theme(text = element_text(size=15))
+
+###########################
+######## park size ########
+###########################
+
+s.dummy=seq(0.1,12,length.out=100)
+msize <- mean(sitecov$size.m)
+sdsize <- sd(sitecov$size.m)
+hsize1 <-(s.dummy-msize)/sdsize # standardized covariate gradient
+
+psi <- matrix(0,nrow=length(spp),ncol=dim(u)[1])
+mu.park <- matrix(0,nrow=dim(u)[1],ncol=length(spp))
+richness4 <-  matrix(0, nrow=length(s.dummy), ncol=dim(u)[1])
+u1 <- u[,,1] # use u from park 1, park 1 has meandiam mean vaule of u
+for (j in 1:length(s.dummy)) {
+  for(i in 1: length(spp)) {
+    for (k in 1:dim(u)[1]) {
+      mu.park[k,i] <- u1[k,i] + a4[k,i]*hsize1[j] + a5[k,i]*mean(punish) + a6[k,i]*mean(reach) 
+      psi[i,k] <- plogis(mu.park[k,i] + a1[k,i]*mean(elev) + a3[k,i]*mean(pop) + a11[k,i]*mean(distance))
+      
+    }}
+  richness4[j,] <- apply(psi,2,sum)  
+}   
+
+richness5<-cbind(apply(richness4,1,mean),apply(richness4,1,quantile,0.975),apply(richness4,1,quantile,0.025))
+sizerichness<-cbind(s.dummy*100, richness5)
+sizerichness <- as.data.frame(sizerichness)
+names(sizerichness) <- c("size", "richness", "up", "low")
+
+## plot 
+ggplot(sizerichness, aes(x=size)) +geom_line(aes(y = richness), colour="black") + theme_bw() +
+  geom_line(aes(y = up),colour="gray", linetype=2) + geom_line(aes(y = low),colour="gray",linetype=2) +
+  theme(axis.text.x = element_text(size=20))+ theme(text = element_text(size=20))+
+  theme(axis.text=element_text(size=25),axis.title=element_text(size=25)) +
+  xlab(bquote('Park size'~(KM^2))) + ylab("Estimated species richness")+
+  theme(text = element_text(size=15)) +theme(axis.text.x = element_text(hjust =1))
+
+
+
+###########################################
+##### spieces specific beta coef #########
+###########################################
 a1 <- fit$sims.list$a5
 a3 <- fit$sims.list$a3
 a11 <- fit$sims.list$a11
@@ -156,7 +209,7 @@ a4 <- fit$sims.list$a4
 a5 <- fit$sims.list$a5
 a6 <- fit$sims.list$a6
 
-##### a1 #####
+######### a1 elevation #############
 betaa1 <- matrix(rep(0), nrow=length(spp), ncol=4)
 for (i in 1:length(spp)) {
   betaa1[i,1] <- mean(a1[,i])
@@ -179,7 +232,7 @@ P + geom_point(stat="identity") +
   theme(text = element_text(size=15)) + geom_errorbar(limit, na.rm =F, width=0.25) + ylab("Standardized Beta coefficient of elevation") + labs(x = "") +
   scale_y_continuous(breaks = seq(-3, 3, 0.5))
 
-##### a3 #####
+######### a3 human population #############
 betaa3 <- matrix(rep(0), nrow=length(spp), ncol=4)
 for (i in 1:length(spp)) {
   betaa3[i,1] <- mean(a3[,i])
@@ -201,7 +254,7 @@ P + geom_point(stat="identity") + scale_y_continuous(breaks = seq(-8, 8, 1))+
   theme(text = element_text(size=15)) + geom_errorbar(limit, na.rm =F, width=0.25) + ylab("Standardized Beta coefficient of human density") +labs(x = "") 
 
 
-#### a11 #####
+########### a11 distance #############
 betaa11 <- matrix(rep(0), nrow=length(spp), ncol=4)
 for (i in 1:length(spp)) {
   betaa11[i,1] <- mean(a11[,i])
@@ -223,7 +276,7 @@ P + geom_point(stat="identity")  +
   theme(text = element_text(size=15)) + geom_errorbar(limit, na.rm =F, width=0.25) + ylab("Standardized Beta coefficient of distance") + labs(x = "") +
   scale_y_continuous(breaks = seq(-1,2, 0.5))
 
-##### a4 #####
+##### a4 park size #####
 betaa4 <- matrix(rep(0), nrow=length(spp), ncol=4)
 for (i in 1:length(spp)) {
   betaa4[i,1] <- mean(a4[,i])
@@ -246,7 +299,7 @@ P + geom_point(stat="identity") +
   theme(text = element_text(size=15)) + geom_errorbar(limit, na.rm =F, width=0.25) + ylab("Beta coefficient of park size") + labs(x = "") +
   scale_y_continuous(breaks = seq(-3, 3, 0.5))
 
-##### a5 #####
+##### a5 punishment #####
 betaa5 <- matrix(rep(0), nrow=length(spp), ncol=4)
 for (i in 1:length(spp)) {
   betaa5[i,1] <- mean(a5[,i])
@@ -270,7 +323,7 @@ P + geom_point(stat="identity")  +
   scale_y_continuous(breaks = seq(-8,30, 2))
 
 
-##### a6 ######
+##### a6 outreach ######
 betaa6 <- matrix(rep(0), nrow=length(spp), ncol=4)
 for (i in 1:length(spp)) {
   betaa6[i,1] <- mean(a6[,i])
@@ -305,104 +358,54 @@ length(which(betaa6$Mean > 0))/ nrow(betaa1)
 
 ##############################################
 
-#  logit(psi[j,i]) <- u[i] +a1[i]*elev[j] +a3[i]*pop[j]  + a11[i]*distance[j] + a4[i]*pasize[j] + 
-#  a5[i]*punish[j] +a6[i]*reach[j] + a.park[i,park.ind[j]]
-# 
-u <- fit$sims.list$u
-elev=sitecov.std$elevation; pop=sitecov.std$population; pasize=sitecov.std$pasize; 
-punish=sitecov.std$punishment; reach=sitecov.std$outreach;
-distance=sitecov.std$distance
-
-#### outreach effect using 1.5 as minial outreach 7 as max 
-r.dummy=seq(1.5,7,length.out=100)
-mreach <- mean(sitecov$reach)
-sdreach<- sd(sitecov$reach)
-hreach1=(r.dummy-mreach)/sdreach
-head(sitecov)
-psi=matrix(0,nrow=length(spp),ncol=dim(u)[1])
-richness2 = matrix(0, nrow=length(r.dummy), ncol=dim(u)[1])
-for (j in 1:length(r.dummy)) {
-  for(i in 1: length(spp)) {
-    for (k in 1:dim(u)[1]) {
-      for(f in 1:6){
-      
-      # a.park[i,f] ~ dnorm(mu.park[i,f], tau.park[i])
-      # mu.park[i,f] <- u[i,f] + a4[i]*pasize[f] + a5[i]*punish[f] +a6[i]*reach[f]
-      # logit(psi[j,i]) <-  a.park[i,park.ind[j]] + a1[i]*elev[j] +a3[i]*pop[j]  + a11[i]*distance[j] 
-     
-      psi[i,k,f] <- plogis(u[k,i,f] + a1[k,i]*mean(elev) + a3[k,i]*mean(pop) + a11[k,i]*mean(distance))
-    
-        
-      psi[i,k] <- plogis(u[k,i] +a1[k,i]*mean(elev) + a3[k,i]*mean(pop) + a11[k,i]*mean(distance) + a4[k,i]*mean(pasize)+
-                           a5[k,i]*mean(punish) + a6[k,i]*hreach1[j] + 1 )  
-    } 
-  }
-  richness2[j,] <- apply(psi,2,sum)  
-}   
-
-richness1<-cbind(apply(richness2,1,mean),apply(richness2,1,quantile,0.975),apply(richness2,1,quantile,0.025))
-Reachrichness<-cbind(r.dummy, richness1)
-Reachrichness <- as.data.frame(Reachrichness)
-names(Reachrichness) <- c("reach", "richness", "up", "low")
-
-## plot using ggplot2 
-ggplot(Reachrichness, aes(x=reach)) +geom_line(aes(y = richness), colour="black") + theme_bw() +
-  geom_line(aes(y = up),colour="gray", linetype=2) + geom_line(aes(y = low),colour="gray",linetype=2) +
-  theme(axis.text.x = element_text(size=18))+ theme(text = element_text(size=20))+
-  theme(axis.text=element_text(size=25),axis.title=element_text(size=25)) +
-  xlab("Frequncy of outreach by park staff (times/year)") + ylab("Estimated species richness")+
-  theme(text = element_text(size=15))
-
-## plot using plot()
-#plot(Reachrichness$richness ~ Reachrichness$reach )
-
-#plot(richness ~ reach, data=Reachrichness, type="l", ylim=c(0,15), 
-#     ylab="Predicted species richness", xlab= "Frequncy of outreach by park staff(times/year)", col = "blue", lwd = 3)
-#lines(low ~ reach, Reachrichness, type="l", col=gray(0.5), lty=2)
-#lines(up ~ reach, Reachrichness,type="l", col=gray(0.5), lty=2)
-
-# park size 
-s.dummy=seq(0.1,12,length.out=100)
-msize <- mean(sitecov$size.m)
-sdsize<- sd(sitecov$size.m)
-hsize1=(s.dummy-msize)/sdsize
-
-psi=matrix(0,nrow=length(spp),ncol=dim(u)[1])
-richness4 = matrix(0, nrow=length(s.dummy), ncol=dim(u)[1])
-for (j in 1:length(s.dummy)) {
-  for(i in 1: length(spp)) {
-    for (k in 1:dim(u)[1]) {
-      
-      #  logit(psi[j,i]) <- u[i] +a1[i]*elev[j] +a3[i]*pop[j]  + a11[i]*distance[j] + a4[i]*pasize[j] + 
-      #  a5[i]*punish[j] +a6[i]*reach[j] + a.park[i,park.ind[j]]
-      
-      psi[i,k] <- plogis(u[k,i] +a1[k,i]*mean(elev) + a3[k,i]*mean(pop) + a11[k,i]*mean(distance) + a4[k,i]*hsize1[j]+
-                           a5[k,i]*mean(punish) + a6[k,i]*mean(reach) + 1 )  
-    } 
-  }
-  richness4[j,] <- apply(psi,2,sum)  
-}   
-
-richness5<-cbind(apply(richness4,1,mean),apply(richness4,1,quantile,0.975),apply(richness4,1,quantile,0.025))
-sizerichness<-cbind(s.dummy*100, richness5)
-sizerichness <- as.data.frame(sizerichness)
-names(sizerichness) <- c("size", "richness", "up", "low")
-
-## plot using ggplot2 
-ggplot(sizerichness, aes(x=size)) +geom_line(aes(y = richness), colour="black") + theme_bw() +
-  geom_line(aes(y = up),colour="gray", linetype=2) + geom_line(aes(y = low),colour="gray",linetype=2) +
-  theme(axis.text.x = element_text(size=20))+ theme(text = element_text(size=20))+
-  theme(axis.text=element_text(size=25),axis.title=element_text(size=25)) +
-  xlab(bquote('Park size'~(KM^2))) + ylab("Estimated species richness")+
-  theme(text = element_text(size=15)) +theme(axis.text.x = element_text(hjust =1))
- 
-## plot using plot()
-#plot(sizerichness$richness ~ sizerichness$size)
-
-#plot(richness ~ size, data=sizerichness, type="l", ylim=c(0,15), 
-#     ylab="Predicted species richness", xlab= "Size of park (ha)", col = "blue", lwd = 3)
-#lines(low ~ size, sizerichness, type="l", col=gray(0.5), lty=2)
-#lines(up ~ size, sizerichness,type="l", col=gray(0.5), lty=2)
 
 
 
+################################################
+###### loading MSOM that use park data#########
+################################################
+
+rm(list=ls(all=TRUE))
+load("Workplace/MSOM_park_reported.RData")
+mu.a1 <- fit$sims.list$mu.a1
+mu.a3 <- fit$sims.list$mu.a3
+mu.a4 <- fit$sims.list$mu.a4
+mu.a5 <- fit$sims.list$mu.a5
+mu.a6 <- fit$sims.list$mu.a6
+mu.a11 <- fit$sims.list$mu.a11
+mu.b1 <- fit$sims.list$mu.b1
+mu.b2 <- fit$sims.list$mu.b2
+
+preds<-as.data.frame(cbind(mu.a1,mu.a3,mu.a11,mu.a4,mu.a5,mu.a6,mu.b1,mu.b2))
+cater <- matrix(rep(0), ncol=length(preds),nrow =6)
+for ( i in 1:ncol(preds)) {
+  cater[1,i] <-mean(preds[,i])
+  cater[2,i] <-sd(preds[,i])
+  cater[3,i] <-quantile(preds[,i],prob=0.025)
+  cater[4,i] <-quantile(preds[,i],prob=0.975)
+  cater[5,i] <-quantile(preds[,i],prob=0.05)
+  cater[6,i] <-quantile(preds[,i],prob=0.95)
+}
+labs <- c("Elevation","Human Population","Distance","Park Size","Park punishment","Park outreach","Camera hours","Camera angle")
+cater <- as.data.frame(cater)
+cater[7,] <- labs
+rownames(cater) <- c("mean","sd","lower","higher","X90lower","X90higher","labels")
+cater <- as.data.frame(t(cater)) 
+
+cater[,1] <- as.numeric(as.character(cater[,1])) # the type of data
+cater[,2] <- as.numeric(as.character(cater[,2]))
+cater[,3] <- as.numeric(as.character(cater[,3]))
+cater[,4] <- as.numeric(as.character(cater[,4]))
+cater[,5] <- as.numeric(as.character(cater[,5]))
+cater[,6] <- as.numeric(as.character(cater[,6]))
+cater[,1:6] <- round(cater[,1:6], digits=2)
+
+cater$labels <- factor(cater$labels, levels =  c("Elevation","Human Population","Distance","Park Size","Park punishment","Park outreach","Camera hours","Camera angle"))
+limit <- aes(ymax = higher, ymin=lower)
+P <- ggplot(cater, aes(y=mean, x=labels))
+P + theme_bw()+ 
+  geom_segment(aes(x=labels, y=X90lower,yend=X90higher ,xend=labels),size=10 ,color = "gray35" )+
+  geom_segment(aes(x=labels, y=lower,yend=higher ,xend=labels),size=3 ,color = "gray35" )+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=25, colour=1), axis.line.y=element_line()) + geom_hline(yintercept=0)+
+  theme(text = element_text(size=25)) + ylab("Standardized Beta coefficient") + labs(x = "") + geom_point(colour = "black", shape=95, size = 10)  # geom_errorbar(limit, na.rm =F, width=0.25) +
+#+scale_y_continuous(breaks = seq(-3, 3, 1))
