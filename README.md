@@ -25,13 +25,21 @@ MSOM_sitecov.csv - Original-scale site covariate for multi-species occupancy mod
 ## **R:**
 
 MSOM_parkeffect.R - R code to run the multi-species occupancy model
+
 MSOM_ post_analysis.R - R code to do post-modelling, plots, checking the results of multi-species occupancy model
+
 RNmodel_parkEff_commonpalmcivet.R - R code to run the RN model of common palm civet
+
 RNmodel_parkEff_ maskedpalmcivet.R - R code to run the RN model of masked palm civet
+
 RNmodel_parkEff_ muntjac.R - R code to run the RN model of muntjac
+
 RNmodel_parkEff_ wildboar.R - R code to run the RN model of wild boar
+
 RNmodel_plot_final.R - R code to plot publish quality beta coefficient plot
+
 model_6_var_parkeff.txt - Jags model file of multispecies occupancy model 
+
 model_parkEff.txt – jags model file of RN model 
 
 
