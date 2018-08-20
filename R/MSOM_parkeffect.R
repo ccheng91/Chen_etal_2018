@@ -1,20 +1,23 @@
-### MSMSOccbanna
-#library(R2jags)
+# This code run Multi-species occupancy model with site random effects in Bayesian framework
+
+# load package
 library(dplyr)
 library(jagsUI)
-### 3-demensinal data
-####
+
+# Create the 3-demensinal detection history data for all detected speices
 rm(list=ls(all=TRUE))
 list.filenames <- list.files(path = "data/All_widedata", pattern="*.csv")
 list.filenames <- paste(c("data/All_widedata/"), list.filenames, sep="")
-# create an empty list that will serve as a container to receive the incoming files
+
+# species name
 spp.temp <- c("blackbear","brushtailedporcupine", "chineseferretbadger",  "commonmacaque", "commonpalmcivet","crabeatingmongoose", "camhour","dhole",               
               "gaur", "goral","hogbadger","leopardcat","maskedpalmcivet", "muntjac", "pigtailedmacaque", "porcupine", "sambar", "serow", "smallindiancivet", 
               "spotedlinsang", "weasel", "wildboar",   "yellowthroatedmarten")
-spp <- spp.temp[-7]
-list.data<-list()
-# create a loop to read in your data
 
+spp <- spp.temp[-7] # remove camerahour 
+list.data<-list() # create an empty list to save the incoming files
+
+# create a loop to read data
 for (i in 1:length(list.filenames)){
   a <- read.csv(list.filenames[i])
   a <- a[-1]
@@ -23,8 +26,8 @@ for (i in 1:length(list.filenames)){
   list.data[[i]]<-a
 }
 
-names(list.data)<-spp.temp
-camhour <- as.data.frame(list.data[7]) # save camhour data
+names(list.data)<-spp.temp # name each object in the list 
+camhour <- as.data.frame(list.data[7]) # save camhour detection history
 a <- read.csv(list.filenames[1]) 
 station <- a[,1] # GET colnames of camhour 
 a <- a[-1] # remove "station"
@@ -33,7 +36,7 @@ list.data <- list.data[-7] # remove camhour from spp list
 
 ##############################
 # use 5-day as a sampling period
-sitecov <- read.csv("data/sitecov_temp_Cheng_reorded.csv")
+sitecov <- read.csv("data/MSOM_sitecov.csv", stringsAsFactors = F)
 days <- sitecov$days
 days.5 <- days%/%5
 daysd.5<- days%%5
@@ -116,7 +119,7 @@ cam_angle[-caman.1,] <- 0
 cam_angle[NA.n] <- NA
 
 ################## OCCUPANCY COVARIATES ########################
-sitecov.std <- read.csv("data/STDED.DEC.sitecov.csv",header=TRUE, row.names=1)
+sitecov.std <- read.csv("data/RN_model_final/STDED.DEC.sitecov.csv",header=TRUE, row.names=1)
 
 nsite <- max(sitecov.std$park.ind)
 pasize <- sitecov.std %>% select(park.ind,pasize) %>% distinct()%>% arrange(park.ind)
@@ -124,7 +127,7 @@ punish <- sitecov.std %>% select(park.ind,punishment) %>% distinct()%>% arrange(
 reach <- sitecov.std %>% select(park.ind,outreach) %>% distinct()%>% arrange(park.ind)
 
 ################## Parkreproted COVARIATES ########################
-park.lvl <- read.csv("data/final/dec.data.wildboar.csv",header=TRUE, row.names=1)
+park.lvl <- read.csv("data/RN_model_final/dec.data.wildboar.csv",header=TRUE, row.names=1)
 park_outreach <- park.lvl %>%  select(park.ind,park_outreach) %>% distinct()%>% arrange(park.ind)
 park_punishment <- park.lvl %>%  select(park.ind,park_punishment) %>% distinct()%>% arrange(park.ind)
 
@@ -156,7 +159,7 @@ occ.params <- c('u', 'v', 'w','N',
                 'a1', 'a3', 'a4', 'a5', 'a6', 'a11', 
                 'b1','b2',
                 'Z', 'Nsite',
-                'sigma.park',
+                'sigma.park','mu.park',
                 'p.fit','p.fitnew')         
 
 modelFile='R/model_6_var_parkeff.txt'
@@ -188,7 +191,12 @@ occ.inits = function() {
   )           
 }
 
-fit <- jags(occ.data, occ.inits, occ.params, modelFile,     ##
+# takes 50 + hours to run 
+
+fit <- jags(occ.data, occ.inits, occ.params, modelFile,     ## 
             n.chains=3, n.iter=500000, n.burnin=250000, n.thin=100, parallel = T )
+
+
+
 
 
