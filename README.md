@@ -3,6 +3,8 @@ Codes and data for Bayesian RN model and multi-species occupancy model with rand
 
 Based on work from: Cheng Chen, Ruichang Quan, Guanghong Cao, Hongpei Yang, A. Cole Burton, Michael Meitner, Jedediah Brodie. 2018. Do local perceptions about law enforcement and community outreach affect conservation outcomes? Comparing protected area management and mammal diversity in a biodiversity hotspot in southwestern China. Under review.
 
+corresponding author Cheng Chen (chengchen0613@gmail.com)
+
 ## **Description:**
 This repository includes R codes, Jags codes and data for 
 1) Nichol-Royle N-mixture abundance model (RN model) with site random effects in Bayesian framework.
