@@ -50,9 +50,10 @@ model{
     
   b1[i] ~ dnorm(mu.b1, tau.b1)
   b2[i] ~ dnorm(mu.b2, tau.b2)
-  
+ 
+ # The park random effect
   sigma.park[i] ~ dunif(0,10)
-  tau.park[i] <- 1/(sigma.park[i]*sigma.park[i])
+  tau.park[i] <- 1/(sigma.park[i]*sigma.park[i]) 
         for (f in 1:nsite) {
         u[i,f] ~ dunif(-10,10)
         a.park[i,f] ~ dnorm(mu.park[i,f], tau.park[i])
