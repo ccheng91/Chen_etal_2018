@@ -1,7 +1,7 @@
 # Chen_etal_2018
 Codes and data for Bayesian RN model and multi-species occupancy model with random effects
 
-Based on work from: Chen, Cheng, Rui‐Chang Quan, Guanghong Cao, Hongpei Yang, A. Cole Burton, Michael Meitner, and Jedediah F. Brodie. "Effects of law enforcement and community outreach on mammal diversity in a biodiversity hotspot." Conservation Biology (2018).
+Based on work from: Chen, C., Quan, R.C., Cao, G., Yang, H., Burton, A.C., Meitner, M. and Brodie, J.F., 2019. Effects of law enforcement and community outreach on mammal diversity in a biodiversity hotspot. Conservation Biology, 33(3), pp.612-622.
 
 corresponding author Cheng Chen (chengchen0613@gmail.com)
 
