@@ -173,7 +173,7 @@ hsize1 <-(s.dummy-msize)/sdsize # standardized covariate gradient
 psi <- matrix(0,nrow=length(spp),ncol=dim(u)[1])
 mu.park <- matrix(0,nrow=dim(u)[1],ncol=length(spp))
 richness4 <-  matrix(0, nrow=length(s.dummy), ncol=dim(u)[1])
-u1 <- u[,,1] # use u from park 1, park 1 has meandiam mean vaule of u
+u1 <- u[,,1] # use u from park 1, park 1 has medium mean vaule of u
 for (j in 1:length(s.dummy)) {
   for(i in 1: length(spp)) {
     for (k in 1:dim(u)[1]) {
