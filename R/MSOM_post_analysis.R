@@ -121,6 +121,12 @@ u <- fit$sims.list$u
 elev=sitecov.std$elevation; pop=sitecov.std$population; pasize=sitecov.std$pasize; 
 punish=sitecov.std$punishment; reach=sitecov.std$outreach;
 distance=sitecov.std$distance
+a1 <- fit$sims.list$a5
+a3 <- fit$sims.list$a3
+a11 <- fit$sims.list$a11
+a4 <- fit$sims.list$a4
+a5 <- fit$sims.list$a5
+a6 <- fit$sims.list$a6
 
 ######################################################
 ######## villager-reproted outreach ################
