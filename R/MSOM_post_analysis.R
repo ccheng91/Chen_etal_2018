@@ -129,7 +129,7 @@ a5 <- fit$sims.list$a5
 a6 <- fit$sims.list$a6
 
 ######################################################
-######## villager-reproted outreach ################
+######## villager-reported outreach ################
 ######################################################
 
 #### outreach effect using 1.5 as minial outreach 7 as max
@@ -142,7 +142,7 @@ head(sitecov)
 psi=matrix(0,nrow=length(spp),ncol=dim(u)[1])
 mu.park=matrix(0,nrow=dim(u)[1],ncol=length(spp))
 richness2 = matrix(0, nrow=length(r.dummy), ncol=dim(u)[1])
-u1 <- u[,,1] # use u from park 1, park 1 has meandiam mean vaule of u
+u1 <- u[,,1] # use u from park 1, park 1 has mean vaule of u
 for (j in 1:length(r.dummy)) {
   for(i in 1: length(spp)) {
     for (k in 1:dim(u)[1]) {
